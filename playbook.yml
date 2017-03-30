@@ -1,0 +1,9 @@
+---
+- hosts: all
+  gather_facts: False
+  roles:
+  - role: ansible-reboot-handler-role
+  tasks:
+  - name: force reboot
+    raw: "true"
+    notify: "reboot system"

@@ -1,0 +1,193 @@
+---
+# if not skip_reboot and not localhost and not local based connection
+#   prompt confirm: continue/abort
+#   save local_pre_uptime
+#   raw: reboot
+#   wait remote port close upto 1min
+#   wait remote port start upto 10min
+#   save remote_uptime
+#   save local_post_uptime
+#   assert remote_uptime < local_post_uptim - local_pre_uptime + 5s
+#   call setup module to update facts
+# endif
+
+- name: set skip_reboot
+  listen: "reboot system"
+  when: hostvars[inventory_hostname].skip_reboot | d() != True
+  set_fact:
+    skip_reboot: "{{ ( skip_reboot | bool )
+                     or
+                     ( [ ansible_connection | d('smart', True) ]
+                       | intersect(['ssh', 'smart', 'paramiko', 'funcd'])
+                       | list
+                       | length == 0 ) }}"
+
+- name: reboot confirm
+  listen: "reboot system"
+  tags: reboot-confirm
+  vars:
+  - rebootable_hosts: >-
+      {{ ansible_play_batch
+         | map('extract', hostvars)
+         | rejectattr('skip_reboot')
+         | map(attribute='inventory_hostname')
+         | list }}
+  when: rebootable_hosts | length > 0
+  pause:
+    prompt: >-
+      List of rebooting machines in this batch:
+        {{ rebootable_hosts | join('
+        ') }}
+      Do you really want to reboot above hosts?
+
+      Press [RETURN] to continue, press CTRL+C and then A to abort
+
+- name: save local uptime before rebooting
+  listen: "reboot system"
+  when: not skip_reboot
+  register: local_uptime_before_reboot
+  delegate_to: localhost
+  become: False
+  become_user: >-
+    {{ hostvars[inventory_hostname].ansible_ssh_user
+       | d(hostvars[inventory_hostname].ansible_user)
+       | d(ansible_ssh_user)
+       | d(ansible_user)
+       | d(lookup('id', 'euname'), True) }}
+  vars:
+  - ansible_become: False
+  - ansible_become_user: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_user
+         | d(hostvars[inventory_hostname].ansible_user)
+         | d(ansible_ssh_user)
+         | d(ansible_user)
+         | d(lookup('id', 'euname'), True) }}
+  setup:
+    filter: "ansible_uptime_seconds"
+
+- name: reboot
+  listen: "reboot system"
+  when: not skip_reboot
+  become: True
+  become_user: root
+  vars:
+  - ansible_become: True
+  - ansible_become_user: root
+  shell: "sleep 2; shutdown -r now 'Ansible triggered'; sleep 1; reboot -f; exit 41"
+  async: 1
+  poll: 0
+  ignore_errors: True
+
+- name: wait for remote port close
+  listen: "reboot system"
+  when: not skip_reboot
+  delegate_to: localhost
+  become: False
+  become_user: >-
+    {{ hostvars[inventory_hostname].ansible_ssh_user
+       | d(hostvars[inventory_hostname].ansible_user)
+       | d(ansible_ssh_user)
+       | d(ansible_user)
+       | d(lookup('id', 'euname'), True) }}
+  vars:
+  - ansible_become: False
+  - ansible_become_user: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_user
+         | d(hostvars[inventory_hostname].ansible_user)
+         | d(ansible_ssh_user)
+         | d(ansible_user)
+         | d(lookup('id', 'euname'), True) }}
+  wait_for:
+    host: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_host
+         | d(hostvars[inventory_hostname].ansible_host, True)
+         | d(inventory_hostname, True) }}
+    port: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_port
+         | d(hostvars[inventory_hostname].ansible_port)
+         | d(ansible_ssh_port)
+         | d(ansible_port)
+         | d((hostvars[inventory_hostname].ansible_connection | d('')  == 'funcd') | ternary(51234, 22)) }}
+    state: stopped
+    delay: 3
+    connect_timeout: 2
+    timeout: 60
+
+- name: wait for remote port open
+  listen: "reboot system"
+  when: not skip_reboot
+  delegate_to: localhost
+  become: False
+  become_user: >-
+    {{ hostvars[inventory_hostname].ansible_ssh_user
+       | d(hostvars[inventory_hostname].ansible_user)
+       | d(ansible_ssh_user)
+       | d(ansible_user)
+       | d(lookup('id', 'euname'), True) }}
+  vars:
+  - ansible_become: False
+  - ansible_become_user: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_user
+         | d(hostvars[inventory_hostname].ansible_user)
+         | d(ansible_ssh_user)
+         | d(ansible_user)
+         | d(lookup('id', 'euname'), True) }}
+  wait_for:
+    host: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_host
+         | d(hostvars[inventory_hostname].ansible_host, True)
+         | d(inventory_hostname, True) }}
+    port: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_port
+         | d(hostvars[inventory_hostname].ansible_port)
+         | d(ansible_ssh_port)
+         | d(ansible_port)
+         | d((hostvars[inventory_hostname].ansible_connection | d('')  == 'funcd') | ternary(51234, 22)) }}
+    state: started
+    delay: 10
+    connect_timeout: 3
+    timeout: "{{ 10 * 60 }}"
+
+- name: save remote uptime
+  listen: "reboot system"
+  when: not skip_reboot
+  register: uptime_after_reboot
+  setup:
+    filter: "ansible_uptime_seconds"
+
+- name: save local uptime after rebooting
+  listen: "reboot system"
+  when: not skip_reboot
+  register: local_uptime_after_reboot
+  delegate_to: localhost
+  become: False
+  become_user: >-
+    {{ hostvars[inventory_hostname].ansible_ssh_user
+       | d(hostvars[inventory_hostname].ansible_user)
+       | d(ansible_ssh_user)
+       | d(ansible_user)
+       | d(lookup('id', 'euname'), True) }}
+  vars:
+  - ansible_become: False
+  - ansible_become_user: >-
+      {{ hostvars[inventory_hostname].ansible_ssh_user
+         | d(hostvars[inventory_hostname].ansible_user)
+         | d(ansible_ssh_user)
+         | d(ansible_user)
+         | d(lookup('id', 'euname'), True) }}
+  setup:
+    filter: "ansible_uptime_seconds"
+
+- name: verify reboot
+  listen: "reboot system"
+  when: not skip_reboot
+  assert:
+    that: "uptime_after_reboot.ansible_facts.ansible_uptime_seconds
+           < (  local_uptime_after_reboot.ansible_facts.ansible_uptime_seconds
+              - local_uptime_before_reboot.ansible_facts.ansible_uptime_seconds
+              + 5)"
+
+- name: re-setup
+  listen: "reboot system"
+  when: not skip_reboot
+  setup:

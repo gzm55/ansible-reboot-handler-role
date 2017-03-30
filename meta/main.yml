@@ -1,0 +1,27 @@
+galaxy_info:
+  author: James Z.M. Gao
+  description: Handle reboot notifications, reboot remote UNIX/Linux machines and wait them back.
+
+  license: BSD
+
+  # use "listen" feathre
+  min_ansible_version: 2.2
+
+  platforms:
+  - name: GenericUNIX
+    versions:
+    - any
+  - name: GenericBSD
+    versions:
+    - any
+  - name: GenericLinux
+    versions:
+    - any
+
+  galaxy_tags: [system]
+
+allow_duplicates: no
+dependencies:
+- { role: gzm55.require_implicity_localhost }
+- { role: gzm55.require_disabe_become }
+- { role: gzm55.local_id_plugin }
