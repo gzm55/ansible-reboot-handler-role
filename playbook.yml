@@ -2,8 +2,33 @@
 - hosts: all
   gather_facts: False
   roles:
-  - role: ansible-reboot-handler-role
+  - { role: ansible-reboot-handler-role, reboot_confirm: False }
+
+  pre_tasks:
+  - name: save before uptime
+    register: before
+    raw: uptime --since
+    changed_when: False
+
   tasks:
-  - name: force reboot
-    raw: "true"
+  - name: force reboot notify 1
+    debug: msg="a"
+    changed_when: True
     notify: "reboot system"
+
+  - name: force reboot notify 2
+    debug: msg="b"
+    changed_when: True
+    notify: "reboot system"
+
+  post_tasks:
+  - name: save after uptime
+    register: after
+    raw: uptime --since
+    changed_when: False
+
+  - name: check boot time
+    assert:
+      that:
+      - "skip_reboot == False or before.stdout == after.stdout"
+      - "skip_reboot == True or before.stdout != after.stdout"

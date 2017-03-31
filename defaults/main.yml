@@ -1,2 +1,3 @@
 ---
 skip_reboot: True
+reboot_confirm: True

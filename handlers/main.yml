@@ -24,7 +24,6 @@
 
 - name: reboot confirm
   listen: "reboot system"
-  tags: reboot-confirm
   vars:
   - rebootable_hosts: >-
       {{ ansible_play_batch
@@ -32,7 +31,9 @@
          | rejectattr('skip_reboot')
          | map(attribute='inventory_hostname')
          | list }}
-  when: rebootable_hosts | length > 0
+  when:
+  - reboot_confirm == True
+  - rebootable_hosts | length > 0
   pause:
     prompt: >-
       List of rebooting machines in this batch:
@@ -111,7 +112,8 @@
     state: stopped
     delay: 3
     connect_timeout: 2
-    timeout: 60
+    timeout: 30
+  ignore_errors: True
 
 - name: wait for remote port open
   listen: "reboot system"

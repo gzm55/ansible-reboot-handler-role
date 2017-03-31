@@ -4,7 +4,7 @@ galaxy_info:
 
   license: BSD
 
-  # use "listen" feathre
+  # use "listen" feature
   min_ansible_version: 2.2
 
   platforms:

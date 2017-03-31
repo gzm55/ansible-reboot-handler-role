@@ -4,7 +4,7 @@ reboot_handler
 Handle reboot notification, reboot remote UNIX/Linux machines and wait them back.
 
 This handler listens a message of "reboot system",
-provide a variable to skip reboot, and confirm before rebooting.
+provides variables to skip reboot or skip the confirmation before rebooting.
 
 Requirements
 ------------
@@ -18,14 +18,15 @@ Requirements
 Role Variables
 --------------
 
-Variable `skip_reboot`, default `True`. This variable should be defined in host/group vars.
+Variable `skip_reboot`, default `True`.
+This variable should be defined in host/group vars.
 The reboot action is dangerous in many situations,
-so we will not reboot the machine unless the `skip_root` for the `inventory_hostname` is set to `True`.
+so we will not reboot the machine unless the `skip_root` for a `inventory_hostname` is set to `True`.
 
-Tag `reboot-confirm`, if not skipped, the handler will trigger a prompt once for a batch,
-the message contains the list of rebooting machines in this batch.
-Press Ctrl+C and A to abort the playbook, or Enter key to continue.
-You can use `--skip-tags=reboot-confirm` to skip this confirmation.
+Variable `reboot_confirm`, default `True`.
+if set to `True`, the handler will trigger a prompt once for a batch,
+the prompting message contains the list of rebooting machines in this batch.
+Press Ctrl+C and A to abort the playbook, or press Enter key to continue.
 
 Dependencies
 ------------
@@ -39,7 +40,7 @@ Example Playbook
 
     - hosts: servers
       roles:
-      - { role: user.reboot_handler  }
+      - { role: user.reboot_handler, reboot_confirm: True }
       tasks:
       - name: change system
         raw: 'true'
@@ -48,9 +49,12 @@ Example Playbook
 Developing
 ----------
 
-The test progress is based on molecule with vagrant driver which is not supported
-by travis-ci. So each release, we have to run `molecule test` on a metal machine,
+The testing progress is based on molecule with vagrant driver which is
+not supported by travis-ci.
+So in each release, we have to run `molecule test` on a developing machine,
 and then galaxy import manually.
+
+TODO: use `wait_for_connection` module (ansible >= 2.3) to wait machines comming back.
 
 License
 -------
