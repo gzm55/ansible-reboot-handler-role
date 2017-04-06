@@ -1,13 +1,4 @@
 ---
-molecule:
-  test:
-    sequence:
-      - destroy
-      - syntax
-      - create
-      - converge
-      #- idempotence
-      - verify
 ansible:
   host_key_checking: False
   ansiblecfg_ssh_connection:
@@ -32,6 +23,14 @@ vagrant:
         memory: 512
   instances:
     - name: server-reboot
+      interfaces:
+      - network_name: private_network
+        type: dhcp
+        auto_config: true
     - name: server-non-reboot
+      interfaces:
+      - network_name: private_network
+        type: dhcp
+        auto_config: true
 verifier:
   name: testinfra

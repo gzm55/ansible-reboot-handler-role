@@ -1,5 +1,18 @@
 ---
 - hosts: all
+  tasks:
+  - name: add hosts via eth1 without port forwarding
+    changed_when: False
+    add_host:
+      name: "{{ item + '-eth1' }}"
+      ansible_host: "{{ hostvars[item].ansible_eth1.ipv4.address }}"
+      ansible_ssh_private_key_file: "{{ hostvars[item].ansible_ssh_private_key_file }}"
+      ansible_user: "{{ hostvars[item].ansible_user }}"
+      skip_reboot: "{{ hostvars[item].skip_reboot | d(True) }}"
+      group: all_eth1
+    with_items: "{{ ansible_play_hosts }}"
+
+- hosts: all_eth1
   gather_facts: False
   roles:
   - { role: ansible-reboot-handler-role, reboot_confirm: False }
@@ -7,28 +20,33 @@
   pre_tasks:
   - name: save before uptime
     register: before
-    raw: uptime --since
+    command: uptime --since
     changed_when: False
 
   tasks:
   - name: force reboot notify 1
-    debug: msg="a"
-    changed_when: True
+    register: trigger
+    copy:
+      dest: "/home/vagrant/A"
+      force: no
+      content: ""
     notify: "reboot system"
 
   - name: force reboot notify 2
-    debug: msg="b"
-    changed_when: True
+    copy:
+      dest: "/home/vagrant/B"
+      force: no
+      content: ""
     notify: "reboot system"
 
   post_tasks:
   - name: save after uptime
     register: after
-    raw: uptime --since
+    command: uptime --since
     changed_when: False
 
   - name: check boot time
     assert:
       that:
-      - "skip_reboot == False or before.stdout == after.stdout"
-      - "skip_reboot == True or before.stdout != after.stdout"
+      - "(trigger | changed == True and skip_reboot == False) or before.stdout == after.stdout"
+      - "(trigger | changed == False or skip_reboot == True) or before.stdout != after.stdout"
