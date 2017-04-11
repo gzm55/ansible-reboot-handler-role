@@ -34,6 +34,7 @@ Dependencies
 * role `gzm55.require_implicity_localhost`
 * role `gzm55.require_disabe_become`
 * role `gzm55.local_id_plugin`
+* role `gzm55.require_become_root`
 
 Example Playbook
 ----------------

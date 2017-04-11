@@ -69,11 +69,11 @@
 - name: reboot
   listen: "reboot system"
   when: not skip_reboot
-  become: True
-  become_user: root
+  become: "{{ root_need_become }}"
+  become_user: "{{ root_user }}"
   vars:
-  - ansible_become: True
-  - ansible_become_user: root
+  - ansible_become: "{{ root_need_become }}"
+  - ansible_become_user: "{{ root_user }}"
   shell: "sleep 2; shutdown -r now 'Ansible triggered'; sleep 1; reboot -f; exit 41"
   async: 1
   poll: 0
